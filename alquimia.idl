@@ -1,0 +1,96 @@
+module AlquimiaApp {
+
+  // ==================== ESTRUCTURAS ====================
+
+  struct Hechizo {
+    long id;
+    string nombre;
+    string tipo_magia;
+    long nivel_poder;
+    string efecto;
+    boolean activo;
+  };
+
+  struct Ingrediente {
+    long id;
+    string nombre;
+    string origen;
+    double potencia_magica;
+    long cantidad_disponible;
+    boolean esta_prohibido;
+  };
+
+  struct RecetaAlquimica {
+    long id;
+    long hechizo_id;
+    long ingrediente_id;
+    long cantidad_requerida;
+    string funcion_en_hechizo;
+  };
+
+  // Información completa de hechizo con sus ingredientes
+  struct HechizoConIngredientes {
+    Hechizo hechizo;
+    sequence<Ingrediente> ingredientes;
+    sequence<long> cantidades_requeridas;
+  };
+
+  // Información completa de ingrediente con sus hechizos
+  struct IngredienteConHechizos {
+    Ingrediente ingrediente;
+    sequence<Hechizo> hechizos;
+    sequence<long> cantidades_usadas;
+  };
+
+  typedef sequence<Hechizo> HechizoSeq;
+  typedef sequence<Ingrediente> IngredienteSeq;
+  typedef sequence<RecetaAlquimica> RecetaSeq;
+
+  // ==================== EXCEPCIONES ====================
+
+  exception NotFound { string message; };
+  exception InvalidOperation { string message; };
+
+  // ==================== INTERFACE HECHIZOS ====================
+
+  interface HechizoService {
+    // CRUD básico
+    long crear(in string nombre, in string tipo_magia, in long nivel_poder, in string efecto, in boolean activo);
+    Hechizo obtener(in long id) raises (NotFound);
+    HechizoSeq listar();
+    void actualizar(in long id, in string nombre, in string tipo_magia, in long nivel_poder, in string efecto, in boolean activo) raises (NotFound);
+    void eliminar(in long id) raises (NotFound);
+
+    // Operaciones con relaciones
+    HechizoConIngredientes obtenerConIngredientes(in long id) raises (NotFound);
+  };
+
+  // ==================== INTERFACE INGREDIENTES ====================
+
+  interface IngredienteService {
+    // CRUD básico
+    long crear(in string nombre, in string origen, in double potencia_magica, in long cantidad_disponible, in boolean esta_prohibido);
+    Ingrediente obtener(in long id) raises (NotFound);
+    IngredienteSeq listar();
+    void actualizar(in long id, in string nombre, in string origen, in double potencia_magica, in long cantidad_disponible, in boolean esta_prohibido) raises (NotFound);
+    void eliminar(in long id) raises (NotFound);
+
+    // Operaciones con relaciones
+    IngredienteConHechizos obtenerConHechizos(in long id) raises (NotFound);
+  };
+
+  // ==================== INTERFACE RECETAS ALQUÍMICAS (Relación M:N) ====================
+
+  interface RecetaAlquimicaService {
+    // CRUD de la tabla intermedia
+    long crear(in long hechizo_id, in long ingrediente_id, in long cantidad_requerida, in string funcion_en_hechizo) raises (InvalidOperation);
+    RecetaAlquimica obtener(in long id) raises (NotFound);
+    RecetaSeq listar();
+    void actualizar(in long id, in long cantidad_requerida, in string funcion_en_hechizo) raises (NotFound);
+    void eliminar(in long id) raises (NotFound);
+
+    // Operaciones especiales
+    RecetaSeq obtenerPorHechizo(in long hechizo_id);
+    RecetaSeq obtenerPorIngrediente(in long ingrediente_id);
+  };
+};
