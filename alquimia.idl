@@ -30,14 +30,14 @@ module AlquimiaApp {
 
   // Información completa de hechizo con sus ingredientes
   struct HechizoConIngredientes {
-    Hechizo hechizo;
+    Hechizo datos_hechizo;
     sequence<Ingrediente> ingredientes;
     sequence<long> cantidades_requeridas;
   };
 
   // Información completa de ingrediente con sus hechizos
   struct IngredienteConHechizos {
-    Ingrediente ingrediente;
+    Ingrediente datos_ingrediente;
     sequence<Hechizo> hechizos;
     sequence<long> cantidades_usadas;
   };

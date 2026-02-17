@@ -31,7 +31,13 @@ def get_orb() -> CORBA.ORB:
 def hechizo_service() -> AlquimiaApp.HechizoService:
     global _hechizo_svc
     if _hechizo_svc is not None:
-        return _hechizo_svc
+        try:
+            # Validar que el servicio sigue siendo accesible
+            _hechizo_svc.listar()
+            return _hechizo_svc
+        except Exception:
+            # Si falla, resetear y reintentar conexión
+            _hechizo_svc = None
 
     orb = get_orb()
     try:
@@ -43,13 +49,15 @@ def hechizo_service() -> AlquimiaApp.HechizoService:
             detail=f"No existe el archivo IOR '{IOR_FILE_HECHIZO}'. ¿Está corriendo el servidor CORBA?",
         )
 
-    obj = orb.string_to_object(ior)
-    svc = obj._narrow(AlquimiaApp.HechizoService)
-    if svc is None:
-        raise HTTPException(status_code=503, detail="No se pudo hacer narrow a HechizoService.")
-
-    _hechizo_svc = svc
-    return _hechizo_svc
+    try:
+        obj = orb.string_to_object(ior)
+        svc = obj._narrow(AlquimiaApp.HechizoService)
+        if svc is None:
+            raise HTTPException(status_code=503, detail="No se pudo hacer narrow a HechizoService.")
+        _hechizo_svc = svc
+        return _hechizo_svc
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Error al conectar CORBA: {str(e)}")
 
 
 def ingrediente_service() -> AlquimiaApp.IngredienteService:

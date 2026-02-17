@@ -25,17 +25,21 @@ class HechizoServiceImpl(AlquimiaApp__POA.HechizoService):
     def __init__(self, conn):
         self.conn = conn
 
+    # Después
     def crear(self, nombre, tipo_magia, nivel_poder, efecto, activo):
-        with self.conn, self.conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO hechizos(nombre, tipo_magia, nivel_poder, efecto, activo)
-                VALUES (%s, %s, %s, %s, %s)
-                RETURNING id
-                """,
-                (nombre, tipo_magia, nivel_poder, efecto, activo),
-            )
-            return cur.fetchone()[0]
+        try:
+            with self.conn, self.conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO hechizos(nombre, tipo_magia, nivel_poder, efecto, activo)
+                    VALUES (%s, %s, %s, %s, %s) RETURNING id
+                    """,
+                    (nombre, tipo_magia, nivel_poder, efecto, activo),
+                )
+                return cur.fetchone()[0]
+        except Exception as e:
+            self.conn.rollback()
+            raise
 
     def obtener(self, id):
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
