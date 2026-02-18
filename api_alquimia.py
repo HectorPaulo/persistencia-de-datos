@@ -196,6 +196,14 @@ class RecetaAlquimicaOut(BaseModel):
     funcion_en_hechizo: str
 
 
+class RecetaAlquimicaConDetallesOut(BaseModel):
+    id: int
+    hechizo: HechizoOut
+    ingrediente: IngredienteOut
+    cantidad_requerida: int
+    funcion_en_hechizo: str
+
+
 # ==================== ENDPOINTS HECHIZOS ====================
 
 @app.post("/hechizos", response_model=int, tags=["Hechizos"])
@@ -422,31 +430,84 @@ def crear_receta(r: RecetaAlquimicaCreate):
         raise HTTPException(status_code=503, detail=f"Error CORBA: {e}")
 
 
-@app.get("/recetas", response_model=List[RecetaAlquimicaOut], tags=["Recetas Alquímicas"])
+@app.get("/recetas", response_model=List[RecetaAlquimicaConDetallesOut], tags=["Recetas Alquímicas"])
 def listar_recetas():
-    """GET ALL - Obtener todas las recetas alquímicas"""
-    svc = receta_service()
+    """GET ALL - Obtener todas las recetas alquímicas con datos completos del hechizo e ingrediente"""
+    svc_receta = receta_service()
+    svc_hechizo = hechizo_service()
+    svc_ingrediente = ingrediente_service()
     try:
-        return [
-            RecetaAlquimicaOut(
-                id=r.id, hechizo_id=r.hechizo_id, ingrediente_id=r.ingrediente_id,
-                cantidad_requerida=r.cantidad_requerida, funcion_en_hechizo=r.funcion_en_hechizo
-            )
-            for r in svc.listar()
-        ]
+        recetas = svc_receta.listar()
+        result = []
+        for receta in recetas:
+            try:
+                # Obtener datos completos del hechizo
+                hechizo = svc_hechizo.obtener(receta.hechizo_id)
+                # Obtener datos completos del ingrediente
+                ingrediente = svc_ingrediente.obtener(receta.ingrediente_id)
+
+                result.append(
+                    RecetaAlquimicaConDetallesOut(
+                        id=receta.id,
+                        hechizo=HechizoOut(
+                            id=hechizo.id,
+                            nombre=hechizo.nombre,
+                            tipo_magia=hechizo.tipo_magia,
+                            nivel_poder=hechizo.nivel_poder,
+                            efecto=hechizo.efecto,
+                            activo=hechizo.activo
+                        ),
+                        ingrediente=IngredienteOut(
+                            id=ingrediente.id,
+                            nombre=ingrediente.nombre,
+                            origen=ingrediente.origen,
+                            potencia_magica=ingrediente.potencia_magica,
+                            cantidad_disponible=ingrediente.cantidad_disponible,
+                            esta_prohibido=ingrediente.esta_prohibido
+                        ),
+                        cantidad_requerida=receta.cantidad_requerida,
+                        funcion_en_hechizo=receta.funcion_en_hechizo
+                    )
+                )
+            except (AlquimiaApp.NotFound, CORBA.Exception):
+                # Si no encontramos los detalles, saltamos esta receta
+                pass
+        return result
     except CORBA.Exception as e:
         raise HTTPException(status_code=503, detail=f"Error CORBA: {e}")
 
 
-@app.get("/recetas/{id}", response_model=RecetaAlquimicaOut, tags=["Recetas Alquímicas"])
+@app.get("/recetas/{id}", response_model=RecetaAlquimicaConDetallesOut, tags=["Recetas Alquímicas"])
 def obtener_receta(id: int):
-    """GET - Obtener receta por ID"""
-    svc = receta_service()
+    """GET - Obtener receta por ID con datos completos del hechizo e ingrediente"""
+    svc_receta = receta_service()
+    svc_hechizo = hechizo_service()
+    svc_ingrediente = ingrediente_service()
     try:
-        r = svc.obtener(id)
-        return RecetaAlquimicaOut(
-            id=r.id, hechizo_id=r.hechizo_id, ingrediente_id=r.ingrediente_id,
-            cantidad_requerida=r.cantidad_requerida, funcion_en_hechizo=r.funcion_en_hechizo
+        receta = svc_receta.obtener(id)
+        hechizo = svc_hechizo.obtener(receta.hechizo_id)
+        ingrediente = svc_ingrediente.obtener(receta.ingrediente_id)
+
+        return RecetaAlquimicaConDetallesOut(
+            id=receta.id,
+            hechizo=HechizoOut(
+                id=hechizo.id,
+                nombre=hechizo.nombre,
+                tipo_magia=hechizo.tipo_magia,
+                nivel_poder=hechizo.nivel_poder,
+                efecto=hechizo.efecto,
+                activo=hechizo.activo
+            ),
+            ingrediente=IngredienteOut(
+                id=ingrediente.id,
+                nombre=ingrediente.nombre,
+                origen=ingrediente.origen,
+                potencia_magica=ingrediente.potencia_magica,
+                cantidad_disponible=ingrediente.cantidad_disponible,
+                esta_prohibido=ingrediente.esta_prohibido
+            ),
+            cantidad_requerida=receta.cantidad_requerida,
+            funcion_en_hechizo=receta.funcion_en_hechizo
         )
     except AlquimiaApp.NotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -454,34 +515,88 @@ def obtener_receta(id: int):
         raise HTTPException(status_code=503, detail=f"Error CORBA: {e}")
 
 
-@app.get("/recetas/hechizo/{hechizo_id}", response_model=List[RecetaAlquimicaOut], tags=["Recetas Alquímicas"])
+@app.get("/recetas/hechizo/{hechizo_id}", response_model=List[RecetaAlquimicaConDetallesOut], tags=["Recetas Alquímicas"])
 def obtener_recetas_por_hechizo(hechizo_id: int):
-    """GET - Obtener todas las recetas de un hechizo específico"""
-    svc = receta_service()
+    """GET - Obtener todas las recetas de un hechizo específico con datos completos"""
+    svc_receta = receta_service()
+    svc_hechizo = hechizo_service()
+    svc_ingrediente = ingrediente_service()
     try:
-        return [
-            RecetaAlquimicaOut(
-                id=r.id, hechizo_id=r.hechizo_id, ingrediente_id=r.ingrediente_id,
-                cantidad_requerida=r.cantidad_requerida, funcion_en_hechizo=r.funcion_en_hechizo
-            )
-            for r in svc.obtenerPorHechizo(hechizo_id)
-        ]
+        recetas = svc_receta.obtenerPorHechizo(hechizo_id)
+        result = []
+        for receta in recetas:
+            try:
+                hechizo = svc_hechizo.obtener(receta.hechizo_id)
+                ingrediente = svc_ingrediente.obtener(receta.ingrediente_id)
+                result.append(
+                    RecetaAlquimicaConDetallesOut(
+                        id=receta.id,
+                        hechizo=HechizoOut(
+                            id=hechizo.id,
+                            nombre=hechizo.nombre,
+                            tipo_magia=hechizo.tipo_magia,
+                            nivel_poder=hechizo.nivel_poder,
+                            efecto=hechizo.efecto,
+                            activo=hechizo.activo
+                        ),
+                        ingrediente=IngredienteOut(
+                            id=ingrediente.id,
+                            nombre=ingrediente.nombre,
+                            origen=ingrediente.origen,
+                            potencia_magica=ingrediente.potencia_magica,
+                            cantidad_disponible=ingrediente.cantidad_disponible,
+                            esta_prohibido=ingrediente.esta_prohibido
+                        ),
+                        cantidad_requerida=receta.cantidad_requerida,
+                        funcion_en_hechizo=receta.funcion_en_hechizo
+                    )
+                )
+            except (AlquimiaApp.NotFound, CORBA.Exception):
+                pass
+        return result
     except CORBA.Exception as e:
         raise HTTPException(status_code=503, detail=f"Error CORBA: {e}")
 
 
-@app.get("/recetas/ingrediente/{ingrediente_id}", response_model=List[RecetaAlquimicaOut], tags=["Recetas Alquímicas"])
+@app.get("/recetas/ingrediente/{ingrediente_id}", response_model=List[RecetaAlquimicaConDetallesOut], tags=["Recetas Alquímicas"])
 def obtener_recetas_por_ingrediente(ingrediente_id: int):
-    """GET - Obtener todas las recetas que usan un ingrediente específico"""
-    svc = receta_service()
+    """GET - Obtener todas las recetas que usan un ingrediente específico con datos completos"""
+    svc_receta = receta_service()
+    svc_hechizo = hechizo_service()
+    svc_ingrediente = ingrediente_service()
     try:
-        return [
-            RecetaAlquimicaOut(
-                id=r.id, hechizo_id=r.hechizo_id, ingrediente_id=r.ingrediente_id,
-                cantidad_requerida=r.cantidad_requerida, funcion_en_hechizo=r.funcion_en_hechizo
-            )
-            for r in svc.obtenerPorIngrediente(ingrediente_id)
-        ]
+        recetas = svc_receta.obtenerPorIngrediente(ingrediente_id)
+        result = []
+        for receta in recetas:
+            try:
+                hechizo = svc_hechizo.obtener(receta.hechizo_id)
+                ingrediente = svc_ingrediente.obtener(receta.ingrediente_id)
+                result.append(
+                    RecetaAlquimicaConDetallesOut(
+                        id=receta.id,
+                        hechizo=HechizoOut(
+                            id=hechizo.id,
+                            nombre=hechizo.nombre,
+                            tipo_magia=hechizo.tipo_magia,
+                            nivel_poder=hechizo.nivel_poder,
+                            efecto=hechizo.efecto,
+                            activo=hechizo.activo
+                        ),
+                        ingrediente=IngredienteOut(
+                            id=ingrediente.id,
+                            nombre=ingrediente.nombre,
+                            origen=ingrediente.origen,
+                            potencia_magica=ingrediente.potencia_magica,
+                            cantidad_disponible=ingrediente.cantidad_disponible,
+                            esta_prohibido=ingrediente.esta_prohibido
+                        ),
+                        cantidad_requerida=receta.cantidad_requerida,
+                        funcion_en_hechizo=receta.funcion_en_hechizo
+                    )
+                )
+            except (AlquimiaApp.NotFound, CORBA.Exception):
+                pass
+        return result
     except CORBA.Exception as e:
         raise HTTPException(status_code=503, detail=f"Error CORBA: {e}")
 
